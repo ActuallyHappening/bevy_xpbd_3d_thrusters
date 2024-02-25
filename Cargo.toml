@@ -18,11 +18,17 @@ default = ["debug"]
 debug = []
 
 [dependencies]
+bevy-inspector-egui = "0.23.2"
 serde = { version = "1.0.192", features = ["derive"] }
 
 [dependencies.bevy_xpbd_3d_parenting]
 version = "0.2.2"
 default-features = false
+
+[dependencies.bevy_hanabi]
+version = "0.10"
+default-features = false
+features = ["3d"]
 
 [dependencies.bevy_xpbd_3d]
 version = "0.4"
@@ -30,3 +36,9 @@ version = "0.4"
 [dependencies.bevy]
 version = "0.13"
 default-features = false
+
+[dev-dependencies]
+bevy_editor_pls = "0.8.0"
+
+[dev-dependencies.bevy]
+version = "0.13"
