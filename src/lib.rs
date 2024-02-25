@@ -74,7 +74,31 @@ pub mod components {
 	#[reflect(Component, InspectorOptions)]
 	pub struct Thruster {
 		#[inspector(min = 0.0, max = 1.0)]
-		pub strength: f32,
+		strength: f32,
+	}
+
+	impl Thruster {
+		pub fn new(strength: f32) -> Self {
+			Self { strength: strength.clamp(0.0, 1.0) }
+		}
+		
+		pub fn strength(&self) -> f32 {
+			self.strength.clamp(0.0, 1.0)
+		}
+
+		pub fn get_strength(&self) -> f32 {
+			self.strength()
+		}
+
+		pub fn set_strength(&mut self, strength: f32) {
+			self.strength = strength.clamp(0.0, 1.0);
+		}
+
+		/// # Safety
+		/// Must keep the strength between 0.0 and 1.0.
+		pub unsafe fn get_mut_strength(&mut self) -> &mut f32 {
+			&mut self.strength
+		}
 	}
 }
 
@@ -105,6 +129,7 @@ pub mod visuals {
 	}
 
 	/// What is spawned by [ThrusterVisual::auto_expand].
+	/// Based on [ParticleEffectBundle].
 	#[derive(Bundle, Debug)]
 	pub struct ThrusterVisualBundle {
 		particle_effect: ParticleEffect,
@@ -134,6 +159,26 @@ pub mod visuals {
 			}
 		}
 
+		pub fn auto_sync(
+			mut thrusters: Query<
+				(&Thruster, &mut EffectProperties, &mut EffectSpawner),
+				With<ThrusterVisual>,
+			>,
+		) {
+			for (thruster, properties, mut spawner) in thrusters.iter_mut() {
+				EffectProperties::set_if_changed(
+					properties,
+					Self::STRENGTH_ATTR,
+					thruster.strength().into(),
+				);
+				if thruster.strength() == 0. {
+					spawner.set_active(false);
+				} else {
+					spawner.set_active(true);
+				}
+			}
+		}
+
 		pub fn compute_hanabi_effect(&self, effects: &mut Assets<EffectAsset>) -> ParticleEffect {
 			let size = self.size;
 
@@ -153,7 +198,7 @@ pub mod visuals {
 			let age = (writer.lit(1.) - writer.prop(Self::STRENGTH_ATTR)).expr();
 			let init_age1 = SetAttributeModifier::new(Attribute::AGE, age);
 
-			let lifetime = writer.lit(1.).expr();
+			let lifetime = writer.lit(3.).expr();
 			let init_lifetime1 = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
 
 			let init_pos1 = SetPositionCone3dModifier {
@@ -175,14 +220,12 @@ pub mod visuals {
 					writer.finish(),
 				)
 				.with_name("emit:rate")
-				.with_property(Self::STRENGTH_ATTR, Value::from(0.5))
-				// .with_property("my_accel", Vec3::new(0., -3., 0.).into())
+				.with_property(Self::STRENGTH_ATTR, Value::from(0.0))
 				.init(init_pos1)
 				// Make spawned particles move away from the emitter origin
 				.init(init_vel1)
 				.init(init_age1)
 				.init(init_lifetime1)
-				// .update(update_accel1)
 				.render(ColorOverLifetimeModifier {
 					gradient: color_gradient,
 				})
