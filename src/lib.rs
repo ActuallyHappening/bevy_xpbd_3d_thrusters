@@ -6,6 +6,7 @@ pub mod prelude {
 	pub use bevy_inspector_egui::prelude::*;
 	pub use bevy_xpbd_3d::prelude::*;
 	pub use bevy_xpbd_3d_parenting::prelude::*;
+	pub(crate) use serde::{Deserialize, Serialize};
 
 	pub use crate::components::*;
 	pub use crate::traits::*;
@@ -72,7 +73,7 @@ pub mod components {
 	#[derive(Component, Reflect, Debug, Clone, Serialize, Deserialize, InspectorOptions)]
 	#[reflect(Component, InspectorOptions)]
 	pub struct Thruster {
-		#[inspector(min = 0.0)]
+		#[inspector(min = 0.0, max = 1.0)]
 		pub strength: f32,
 	}
 }
@@ -90,22 +91,50 @@ pub mod visuals {
 
 	use crate::prelude::*;
 
+	#[derive(Component, Reflect, Debug, Clone, Serialize, Deserialize, InspectorOptions)]
+	#[reflect(Component, InspectorOptions)]
 	pub struct ThrusterVisual {
+		#[inspector(min = 0.1, max = 100.0)]
 		pub size: f32,
 	}
 
 	impl Default for ThrusterVisual {
 		fn default() -> Self {
-			Self {
-				size: 1.0,
-			}
+			Self { size: 1.0 }
 		}
+	}
+
+	/// What is spawned by [ThrusterVisual::auto_expand].
+	#[derive(Bundle, Debug)]
+	pub struct ThrusterVisualBundle {
+		particle_effect: ParticleEffect,
+		compiled_effect: CompiledParticleEffect,
 	}
 
 	impl ThrusterVisual {
 		pub const STRENGTH_ATTR: &'static str = "dynamic_strength_attr";
 
-		pub fn compute_hanabi_effect(self, mut effects: ResMut<Assets<EffectAsset>>) -> ParticleEffect {
+		/// Automatically expands any [ThrusterVisual] components into a full [ParticleEffectBundle] (without overriding existing components).
+		pub fn auto_expand(
+			thruster_visuals: Query<(Entity, &ThrusterVisual), (With<Thruster>, Without<ParticleEffect>)>,
+			mut commands: Commands,
+			mut effects: ResMut<Assets<EffectAsset>>,
+		) {
+			for (e, thruster_visual) in thruster_visuals.iter() {
+				let effect = thruster_visual.compute_hanabi_effect(&mut effects);
+				#[cfg(feature = "debug")]
+				trace!(
+					"Expanded a ThrusterVisual into a ParticleEffectBundle: {:?}",
+					thruster_visual
+				);
+				commands.entity(e).insert(ThrusterVisualBundle {
+					particle_effect: effect,
+					compiled_effect: CompiledParticleEffect::default(),
+				});
+			}
+		}
+
+		pub fn compute_hanabi_effect(&self, effects: &mut Assets<EffectAsset>) -> ParticleEffect {
 			let size = self.size;
 
 			let mut color_gradient = Gradient::new();

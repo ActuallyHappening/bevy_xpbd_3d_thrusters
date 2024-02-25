@@ -12,6 +12,7 @@ fn main() {
 	));
 
 	app.add_systems(Startup, setup);
+	app.add_systems(Update, ThrusterVisual::auto_expand);
 
 	app.run();
 }
@@ -38,5 +39,6 @@ fn setup(
 			transform: Transform::from_xyz(0.0, 0.0, 0.0),
 			..default()
 		},
+		ThrusterVisual::default(),
 	));
 }
