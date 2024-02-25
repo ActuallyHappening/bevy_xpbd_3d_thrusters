@@ -1,12 +1,15 @@
 use bevy::prelude::*;
-use bevy_hanabi::HanabiPlugin;
-use bevy_xpbd_3d_thrusters::prelude::*;
 use bevy_editor_pls::prelude::*;
+use bevy_xpbd_3d_thrusters::{plugins::ThrusterPlugins, prelude::*};
 
 fn main() {
 	let mut app = App::new();
 
-	app.add_plugins((DefaultPlugins, HanabiPlugin, EditorPlugin::default()));
+	app.add_plugins((
+		DefaultPlugins,
+		ThrusterPlugins::new(Update),
+		EditorPlugin::default(),
+	));
 
 	app.add_systems(Startup, setup);
 
